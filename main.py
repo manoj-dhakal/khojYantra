@@ -1,11 +1,28 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from gensim.models import Word2Vec
 import os
 from sklearn.metrics.pairwise import cosine_similarity
-from typing import List, Tuple
+from typing import List
+import json
 
 app = FastAPI()
+
+# Enable CORS
+origins = [
+    "http://localhost",
+    "http://localhost:3000",  # Add your frontend URL here
+    # Add more origins as needed
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Load the Word2Vec model
 model_path = "processed.word2vec"  # Path to your Word2Vec model
@@ -39,15 +56,17 @@ def compute_similarity(phrase: str, document: str) -> float:
 # Pydantic model for request body
 class SearchRequest(BaseModel):
     phrase: str
+    top_k: int = 10
 
 # Pydantic model for response body
 class SearchResponse(BaseModel):
-    file: str
-    score: float
+    Title: str
+    Edition_Info: str
 
 @app.post("/search", response_model=List[SearchResponse])
 async def search(request: SearchRequest):
     phrase = request.phrase
+    top_k = request.top_k
     document_scores = []
 
     # Process each document in the folder
@@ -63,8 +82,23 @@ async def search(request: SearchRequest):
     # Sort documents based on similarity score in descending order
     document_scores.sort(key=lambda x: x[1], reverse=True)
 
-    # Convert to response model
-    response = [SearchResponse(file=file, score=score) for file, score in document_scores]
+    # Get the top k files
+    top_k_files = document_scores[:top_k]
+
+    # Extract relevant information from the top k files
+    response = []
+    for file, _ in top_k_files:
+        document_path = os.path.join(folder_path, file)
+        with open(document_path, "r", encoding="utf-8") as f:
+            document_content = f.read()
+
+        # Extract relevant information
+        data = json.loads(document_content)
+        response.append(SearchResponse(
+            Title=data.get("Title", ""),
+            Edition_Info=data.get("Edition Info", "")
+        ))
+
     return response
 
 if __name__ == "__main__":
