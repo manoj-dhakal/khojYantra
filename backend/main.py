@@ -6,6 +6,7 @@ import os
 from sklearn.metrics.pairwise import cosine_similarity
 from typing import List
 import json
+import numpy as np
 
 app = FastAPI()
 
@@ -34,14 +35,23 @@ def tokenize_text(text: str) -> List[str]:
     return text.split()
 
 def compute_similarity(phrase: str, document: str) -> float:
-    phrase_tokens = tokenize_text(phrase)
-    doc_tokens = tokenize_text(document)
-    
-    phrase_vector = sum([wv[token] for token in phrase_tokens if token in wv])
-    doc_vector = sum([wv[token] for token in doc_tokens if token in wv])
-    
-    return cosine_similarity([phrase_vector], [doc_vector])[0][0] if phrase_vector.any() and doc_vector.any() else 0
+   phrase_tokens = tokenize_text(phrase)
+   doc_tokens = tokenize_text(document)
 
+
+   phrase_vecs = [wv[token] for token in phrase_tokens if token in wv]
+   doc_vecs = [wv[token] for token in doc_tokens if token in wv]
+
+
+   if not phrase_vecs or not doc_vecs:
+       return 0.0
+
+
+   phrase_vector = np.sum(phrase_vecs, axis=0)
+   doc_vector = np.sum(doc_vecs, axis=0)
+
+
+   return cosine_similarity([phrase_vector], [doc_vector])[0][0]
 # Pydantic models
 class SearchRequest(BaseModel):
     phrase: str
