@@ -35,7 +35,7 @@ def compute_similarity(phrase, document):
 from sklearn.metrics.pairwise import cosine_similarity
 
 # The specific phrase you want to rank documents by
-phrase = "यौन दुर्व्यवहार"
+phrase = "नहकुल सुवेदी"
 
 # List to store the similarity score for each document
 document_scores = []
